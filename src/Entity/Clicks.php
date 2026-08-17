@@ -2,15 +2,26 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\GetCollection;
 use App\Repository\ClicksRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
+#[ApiResource(
+    operations: [
+        new GetCollection(security: "is_granted('ROLE_USER')"),
+    ],
+    normalizationContext: ['groups' => ['read:click']],
+)]
 #[ORM\Entity(repositoryClass: ClicksRepository::class)]
 class Clicks
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['read:click'])]
+
     private ?int $id = null;
 
     #[ORM\ManyToOne(inversedBy: 'clicks')]
@@ -18,9 +29,11 @@ class Clicks
     private ?Links $link = null;
 
     #[ORM\Column]
+    #[Groups(['read:click'])]
     private ?\DateTimeImmutable $clickedAt = null;
 
     #[ORM\Column(length: 512, nullable: true)]
+    #[Groups(['read:click'])]
     private ?string $userAgent = null;
 
     public function __construct()

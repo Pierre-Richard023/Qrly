@@ -2,13 +2,33 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\Post;
 use App\Repository\UserRepository;
+use App\State\UserRegisterProcessor;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
 
+#[ApiResource(
+    operations: [
+        new GetCollection(),
+        new Post(
+            uriTemplate: '/register',
+            processor: UserRegisterProcessor::class,
+            validationContext: ['groups' => ['Default', 'create:user']]
+        ),
+        new Get(),
+    ],
+    normalizationContext: ['groups' => ['read:user']],
+    denormalizationContext: ['groups' => ['create:user']],
+)]
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: '`user`')]
 #[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_EMAIL', fields: ['email'])]
@@ -17,9 +37,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['read:user'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 180)]
+    #[Groups(['read:user', 'create:user'])]
+    #[Assert\NotBlank]
+    #[Assert\Email]
     private ?string $email = null;
 
     /**
@@ -33,6 +57,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      */
     #[ORM\Column]
     private ?string $password = null;
+
+
+    #[Assert\NotBlank(groups: ['create:user'])]
+    #[Assert\Length(min: 8, groups: ['create:user'])]
+    #[Groups(['create:user'])]
+    private ?string $plainPassword = null;
 
     /**
      * @var Collection<int, Links>
@@ -109,6 +139,19 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setPassword(string $password): static
     {
         $this->password = $password;
+
+        return $this;
+    }
+
+
+    public function getPlainPassword(): ?string
+    {
+        return $this->plainPassword;
+    }
+
+    public function setPlainPassword(?string $plainPassword): self
+    {
+        $this->plainPassword = $plainPassword;
 
         return $this;
     }

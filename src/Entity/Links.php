@@ -2,29 +2,59 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Delete;
+use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\Post;
 use App\Repository\LinksRepository;
+use App\State\LinkCreateProcessor;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
 
+#[ApiResource(
+    operations: [
+        new GetCollection(security: "is_granted('ROLE_USER')"),
+        new Get(security: "is_granted('ROLE_USER') and object.getOwner() == user"),
+        new Post(
+            security: "is_granted('ROLE_USER')",
+            processor: LinkCreateProcessor::class,
+        ),
+        new Delete(security: "is_granted('ROLE_USER') and object.getOwner() == user"),
+    ],
+    normalizationContext: ['groups' => ['read:link']],
+    denormalizationContext: ['groups' => ['write:link']],
+    order: ['createdAt' => 'DESC'],
+)]
+#[ORM\UniqueConstraint(name: 'UNIQ_SHORT_CODE', fields: ['shortCode'])]
 #[ORM\Entity(repositoryClass: LinksRepository::class)]
 class Links
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['read:link'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 2048)]
+    #[Groups(['read:link', 'write:link'])]
+    #[Assert\NotBlank]
+    #[Assert\Url(message: 'L\'URL fournie n\'est pas valide.')]
     private ?string $originalUrl = null;
 
     #[ORM\Column(length: 20)]
+    #[Groups(['read:link'])]
     private ?string $shortCode = null;
 
     #[ORM\Column]
+    #[Groups(['read:link'])]
     private ?\DateTimeImmutable $createdAt = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['read:link', 'write:link'])]
     private ?\DateTimeImmutable $expiresAt = null;
 
     #[ORM\ManyToOne(inversedBy: 'links')]
